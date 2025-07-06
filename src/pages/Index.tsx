@@ -23,13 +23,68 @@ const Index = () => {
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState(null);
+  const [generationHistory, setGenerationHistory] = useState([]);
 
-  const handleGenerate = () => {
+  const generateImageWithAI = async (prompt: string) => {
+    // Симулируем API вызов для генерации изображения
+    return new Promise((resolve) => {
+      setTimeout(
+        () => {
+          // Возвращаем путь к одному из предгенерированных изображений
+          const images = [
+            "/img/b7a3d771-4643-4a48-b09d-4c63aebe3db2.jpg",
+            "/img/dd06bf62-df69-4e1a-9a2a-318ae8368522.jpg",
+            "/img/557b1fff-e2ec-4e62-9110-6855533707d1.jpg",
+          ];
+          const randomImage = images[Math.floor(Math.random() * images.length)];
+          resolve(randomImage);
+        },
+        2000 + Math.random() * 2000,
+      ); // 2-4 секунды
+    });
+  };
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return;
+
     setIsGenerating(true);
-    // Simulate generation
-    setTimeout(() => {
+    setGeneratedImage(null);
+
+    try {
+      // Формируем промпт с учетом стиля
+      let enhancedPrompt = prompt;
+
+      if (style === "anime") {
+        enhancedPrompt = `${prompt}, anime style, detailed anime art, vibrant colors`;
+      } else if (style === "realistic") {
+        enhancedPrompt = `${prompt}, photorealistic, high quality, detailed`;
+      } else if (style === "abstract") {
+        enhancedPrompt = `${prompt}, abstract art, artistic, creative`;
+      } else if (style === "nsfw") {
+        enhancedPrompt = `${prompt}, artistic, tasteful`;
+      } else if (style === "artistic") {
+        enhancedPrompt = `${prompt}, artistic style, beautiful, creative`;
+      }
+
+      // Генерируем изображение
+      const imagePath = await generateImageWithAI(enhancedPrompt);
+
+      const newImage = {
+        id: Date.now(),
+        image: imagePath,
+        prompt: prompt,
+        style: style || "Обычный",
+        timestamp: new Date().toLocaleString("ru-RU"),
+      };
+
+      setGeneratedImage(newImage);
+      setGenerationHistory((prev) => [newImage, ...prev.slice(0, 9)]); // Сохраняем последние 10
+    } catch (error) {
+      console.error("Ошибка при генерации:", error);
+    } finally {
       setIsGenerating(false);
-    }, 3000);
+    }
   };
 
   const examples = [
@@ -182,6 +237,79 @@ const Index = () => {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Результат генерации */}
+          {generatedImage && (
+            <Card className="mt-8 border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl text-gray-900 flex items-center justify-center gap-2">
+                  <Icon
+                    name="CheckCircle"
+                    size={24}
+                    className="text-green-500"
+                  />
+                  Изображение создано
+                </CardTitle>
+                <CardDescription>
+                  Ваше изображение готово к использованию
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="relative overflow-hidden rounded-lg">
+                  <img
+                    src={generatedImage.image}
+                    alt={generatedImage.prompt}
+                    className="w-full h-auto max-h-96 object-contain bg-gray-100 rounded-lg"
+                  />
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon
+                      name="MessageSquare"
+                      size={16}
+                      className="text-gray-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Промпт:
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    {generatedImage.prompt}
+                  </p>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Badge
+                        variant="secondary"
+                        className="bg-indigo-50 text-indigo-700"
+                      >
+                        {generatedImage.style}
+                      </Badge>
+                      <span className="text-xs text-gray-500">
+                        {generatedImage.timestamp}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const link = document.createElement("a");
+                        link.href = generatedImage.image;
+                        link.download = `generated-${generatedImage.id}.jpg`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                    >
+                      <Icon name="Download" size={16} className="mr-2" />
+                      Скачать
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </section>
 
@@ -190,51 +318,81 @@ const Index = () => {
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Примеры работ
+              {generationHistory.length > 0
+                ? "Ваши созданные изображения"
+                : "Примеры работ"}
             </h2>
             <p className="text-lg text-gray-600">
-              Посмотрите что создали другие пользователи
+              {generationHistory.length > 0
+                ? "История ваших генераций"
+                : "Посмотрите что создали другие пользователи"}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {examples.map((example) => (
-              <Card
-                key={example.id}
-                className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow duration-300"
-              >
-                <div className="aspect-square bg-gray-100 overflow-hidden">
-                  <img
-                    src={example.image}
-                    alt={example.prompt}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <CardContent className="p-4">
-                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                    {example.prompt}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <Badge
-                      variant="secondary"
-                      className="bg-indigo-50 text-indigo-700"
-                    >
-                      {example.style}
-                    </Badge>
-                    <div className="flex items-center space-x-2">
-                      <Avatar className="w-6 h-6">
-                        <AvatarFallback className="text-xs bg-gray-200">
-                          {example.author[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs text-gray-500">
-                        {example.author}
-                      </span>
-                    </div>
+            {(generationHistory.length > 0 ? generationHistory : examples).map(
+              (item) => (
+                <Card
+                  key={item.id}
+                  className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow duration-300"
+                >
+                  <div className="aspect-square bg-gray-100 overflow-hidden">
+                    <img
+                      src={item.image}
+                      alt={item.prompt}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    />
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                  <CardContent className="p-4">
+                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                      {item.prompt}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <Badge
+                        variant="secondary"
+                        className="bg-indigo-50 text-indigo-700"
+                      >
+                        {item.style}
+                      </Badge>
+                      <div className="flex items-center space-x-2">
+                        {generationHistory.length > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">
+                              {item.timestamp}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const link = document.createElement("a");
+                                link.href = item.image;
+                                link.download = `generated-${item.id}.jpg`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                            >
+                              <Icon name="Download" size={14} />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <Avatar className="w-6 h-6">
+                              <AvatarFallback className="text-xs bg-gray-200">
+                                {item.author[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-gray-500">
+                              {item.author}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ),
+            )}
           </div>
         </div>
       </section>
